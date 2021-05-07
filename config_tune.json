@@ -1,0 +1,30 @@
+{
+    "train": {
+        "n_epochs": 20,
+        "batch_size": 8,
+        "lr": 0.00001
+    },
+    "policy": {
+        "name": "ours",
+        "update_frequency": 1,
+        "update_size": 5,
+        "learner": {
+            "name": "line_reg",
+            "target": "diff_loss",
+            "params": {}
+        },
+        "warmup": {
+            "n_epochs": 4
+        },
+        "gen": {
+            "num": 1500,
+            "n_epochs": 2,
+            "method": {
+                "name": "hist_log",
+                "n_bins": 60,
+                "min": -15,
+                "max": 0
+            }
+        }
+    }
+}

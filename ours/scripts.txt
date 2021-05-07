@@ -1,0 +1,11 @@
+python -m ours.model_warmup --config config_tune.json --run-folder run_ours --seed 12345 --out-dir tmp/saves/ --img-dir /home/ubuntu/thesis/COVID19_1110/studies/CT-1 --mask-set-dir /home/ubuntu/thesis/COVID19_1110/mask_sets/set1
+
+python -m ours.model_gen --config config_tune.json --run-folder run_ours --seed 12345 --saved-model tmp/saves/warmup_set1_2021_05_07_12_03.pt --gen-dir tmp/gen --img-dir /home/ubuntu/thesis/COVID19_1110/studies/CT-1 --mask-set-dir /home/ubuntu/thesis/COVID19_1110/mask_sets/set1 --out-dir tmp/saves/
+
+python -m ours.feature_extractor --config config_tune.json --in-dir tmp/gen --out-dir tmp/gen_features/hist_log
+
+python -m ours.policy_learn --config config_tune.json --seed 1234 --save-dir tmp/saves --features-dir tmp/gen_features/hist_log
+
+python -m ours.policy_evaluate --config config_tune.json --run-folder run_ours --seed 12345 --saved-model tmp/saves/gen_set1_ours_12345_2021_05_07_12_03.pt --policy-dir tmp/saves/line_reg_2021_05_07_16_28_31.dill --img-dir /home/ubuntu/thesis/COVID19_1110/studies/CT-1 --mask-set-dir /home/ubuntu/thesis/COVID19_1110/mask_sets/set1
+
+# add other policy scripts
