@@ -16,16 +16,20 @@ tqdm.pandas()
 
 def feature_hist_log(x, n_bins, min, max, *args, **kwargs):
     """creates histogram from the probabiliy / entropy map"""
-    hist = torch.histc(torch.log(x.flatten()), bins=n_bins//2, min=min, max=max)
+    # hist = torch.histc(torch.log(x.flatten()), bins=n_bins, min=min, max=max)
+    # return hist
 
+    hist = torch.histc(torch.log(x.flatten()), bins=n_bins//2, min=min, max=max)
     entr = - x * torch.log(x)
     hist_entr = torch.histc(torch.log(entr.flatten()), bins=n_bins//2, min=min, max=max)
     return torch.cat([hist, hist_entr])
+
 
 def feature_hist(x, n_bins, min, max, *args, **kwargs):
     """creates histogram from the probabiliy / entropy map"""
     hist = torch.histc(x.flatten(), bins=n_bins, min=min, max=max)
     return hist
+
 
 def feature_pool(pred, k=16):
     """creates histogram from the probabiliy / entropy map"""
@@ -85,13 +89,15 @@ def parse():
     args = parser.parse_args()
     return args
 
+
 feature_mapper = {
-        'hist': feature_hist,
-        'hist_log': feature_hist_log,
-        'pca': feature_pca,
-        'tsne': feature_tsne,
-        'pool': feature_pool,
-    }
+    'hist': feature_hist,
+    'hist_log': feature_hist_log,
+    'pca': feature_pca,
+    'tsne': feature_tsne,
+    'pool': feature_pool,
+}
+
 
 def main():
     args = parse()

@@ -141,24 +141,26 @@ def train_model(model, dataloaders, policy_learner, optimizer, scheduler, start_
     return model, n_images, new_points
 
 
-def train_single(model, train_batch, loader_val, optimizer, device, out_dir):
-    old_loss, old_f1 = get_loss_score(model, loader_val, device)
-    _, inputs, labels = train_batch
-    inputs = inputs.to(device)
-    labels = labels.to(device)
+def train_single(model, batch, loader_val, optimizer, old_loss, old_f1, device, out_dir):
+    for _ in range(5):
+        _, inputs, labels = batch
+        inputs = inputs.to(device)
+        labels = labels.to(device)
 
-    # zero the parameter gradients
-    optimizer.zero_grad()
+        # zero the parameter gradients
+        optimizer.zero_grad()
 
-    with torch.set_grad_enabled(True):
-        outputs = model(inputs)
-        loss = dice_loss(outputs, labels)
+        with torch.set_grad_enabled(True):
+            outputs = model(inputs)
+            loss = dice_loss(outputs, labels)
 
-        # backward + optimize only if in training phase
-        loss.backward()
-        optimizer.step()
+            # backward + optimize only if in training phase
+            loss.backward()
+            optimizer.step()
 
     new_loss, new_f1 = get_loss_score(model, loader_val, device)
+    _, inputs, _ = batch
+    inputs = inputs.to(device)
     pred_batch = model(inputs)
     torch.save(pred_batch, out_dir)
     return out_dir, (old_loss - new_loss).cpu().item(), (new_f1 - old_f1).cpu().item()
@@ -170,6 +172,7 @@ def gen_data(num, model, points, loader_val, optimizer, device, batch_size, out_
     gen_dataset = SimpleDataset(points)
     gen_loader = DataLoader(gen_dataset, batch_size=batch_size,
                                 shuffle=True, num_workers=0, pin_memory=True)
+    old_loss, old_f1 = get_loss_score(model, loader_val, device)
     data = []
     for i in tqdm(range(num // len(gen_loader))):
         gen_loader = DataLoader(gen_dataset, batch_size=batch_size,
@@ -179,7 +182,7 @@ def gen_data(num, model, points, loader_val, optimizer, device, batch_size, out_
             optimizer_t = torch.optim.Adam(model_t.parameters())
             optimizer_t.load_state_dict(optimizer.state_dict())
             out_file = os.path.join(out_dir, f'preds_{i}_{j}')
-            res = train_single(model_t, batch, loader_val, optimizer_t, device, out_file)
+            res = train_single(model_t, batch, loader_val, optimizer_t, old_loss, old_f1, device, out_file)
             data.append(res)
     return data
 
@@ -273,7 +276,7 @@ def main():
 
     wrt_name = basename(writer_name)
     filename = os.path.join(out_dir, f'gen_{wrt_name}.pt')
-    checkpoint_save(model, optimizer, policy_learner, start_epoch + n_epochs-1, writer_name, n_images, filename)
+    checkpoint_save(model_trained, optimizer, policy_learner, start_epoch + n_epochs, writer_name, n_images, filename)
 
     val_learn_loader = DataLoader(val_learn_set, batch_size=batch_size, shuffle=True, num_workers=0, pin_memory=True)
     data = gen_data(gen_num, model_warmuped, new_points, val_learn_loader, optimizer,
