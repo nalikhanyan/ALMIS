@@ -70,7 +70,7 @@ class RandomLearner(Policy):
             self.used_ids.update(set(map(lambda x: x.item(), col_wise[0])))
 
             col_batches = [self._create_chunks(
-                x, batch_size) for x in col_wise[:-1]]
+                x, batch_size) for x in col_wise]
             self.batches = list(zip(*col_batches))
         self._points += self.batches
 
@@ -116,12 +116,32 @@ class UncertainLearnerEntropy(Policy):
     """
 
     def __init__(self, loader, warmup_epochs, n_new, model,
-                 update_freq=1, trials=10, seed=431, device=torch.device('cpu')):
+                 update_freq=1, trials=10, seed=431, 
+                 device=torch.device('cpu'), *args, **kwargs):
         super().__init__(loader, warmup_epochs, n_new, model,
                          update_freq, seed)
         self.used_ids = set()  # ignoring warmup indexes
         self._device = device
         self._trials = trials
+
+    def update_used_points(self, idxs: set):
+        new_idxs = idxs - self.used_ids
+        with torch.no_grad():
+            batch_size = self.loader_pool.batch_size
+            all_points = list(self.loader_pool)
+            triplets = sum([list(zip(*batch))
+                            for batch in all_points], [])
+
+            new_points = [tr for tr in tqdm(triplets) if tr[0].item() in new_idxs]
+            col_wise = list(zip(*new_points))
+            if not col_wise:
+                return self._points
+            self.used_ids.update(set(map(lambda x: x.item(), col_wise[0])))
+
+            col_batches = [self._create_chunks(
+                x, batch_size) for x in col_wise]
+            self.batches = list(zip(*col_batches))
+        self._points += self.batches
 
     @staticmethod
     def _create_chunks(array, size):
@@ -178,6 +198,25 @@ class VarianceLearnerDropout(Policy):
         self._trials = trials
         self._device = device
 
+    def update_used_points(self, idxs: set):
+        new_idxs = idxs - self.used_ids
+        with torch.no_grad():
+            batch_size = self.loader_pool.batch_size
+            all_points = list(self.loader_pool)
+            triplets = sum([list(zip(*batch))
+                            for batch in all_points], [])
+
+            new_points = [tr for tr in tqdm(triplets) if tr[0].item() in new_idxs]
+            col_wise = list(zip(*new_points))
+            if not col_wise:
+                return self._points
+            self.used_ids.update(set(map(lambda x: x.item(), col_wise[0])))
+
+            col_batches = [self._create_chunks(
+                x, batch_size) for x in col_wise]
+            self.batches = list(zip(*col_batches))
+        self._points += self.batches
+
     @staticmethod
     def _create_chunks(array, size):
         step = size
@@ -233,7 +272,7 @@ class OurLearnerDeterministic(Policy):
         # self._trials = trials
 
     def update_used_points(self, idxs: set):
-        new_idxs = idxs - self.used_ids
+        new_idxs = set([idx.item() for idx in idxs]) - self.used_ids
         if len(new_idxs) == 0:
             return
         with torch.no_grad():
@@ -241,7 +280,6 @@ class OurLearnerDeterministic(Policy):
             all_points = list(self.loader_pool)
             triplets = sum([list(zip(*batch))
                             for batch in all_points], [])
-
             new_points = [tr for tr in tqdm(triplets) if tr[0].item() in new_idxs]
             col_wise = list(zip(*new_points))
             if not col_wise:
@@ -249,7 +287,7 @@ class OurLearnerDeterministic(Policy):
             self.used_ids.update(set(map(lambda x: x.item(), col_wise[0])))
 
             col_batches = [self._create_chunks(
-                x, batch_size) for x in col_wise[:-1]]
+                x, batch_size) for x in col_wise]
             self.batches = list(zip(*col_batches))
         self._points += self.batches
 
@@ -264,7 +302,8 @@ class OurLearnerDeterministic(Policy):
 
         feature_map = self.feature_gen(item.detach().cpu()).numpy()
         feature_map = scaler.transform(feature_map.reshape(1, -1))
-        score = model.predict(feature_map)[0]
+        # score = model.predict(feature_map) # if regressor
+        score = model.predict_proba(feature_map)[:, -1] # if classifier with highest class prob in last place
         return score
 
     def _update_points(self):

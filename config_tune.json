@@ -21,7 +21,7 @@
             "n_epochs": 2,
             "method": {
                 "name": "hist_log",
-                "n_bins": 60,
+                "n_bins": 30,
                 "min": -15,
                 "max": 0
             }
