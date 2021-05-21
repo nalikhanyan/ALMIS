@@ -15,7 +15,7 @@ import torch.optim as optim
 import torchvision.utils
 from dataloaders.ct_lungs import LungsDataset, SimpleDataset
 from metrics import calc_f1, dice_loss, print_metrics
-from policy import OurLearnerDeterministic
+from policy import OurLearnerDeterministic, RandomLearner, UncertainLearnerEntropy, VarianceLearnerDropout
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
@@ -185,12 +185,15 @@ def main():
         return feature_hist_log(x, **config_json['policy']['gen']['method'])
 
     policy_reg= scikit_model_load(policy_file)
-
     policy_learner = OurLearnerDeterministic(dataloaders['train'], 0, n_batches_per_step,
                                              model, policy_reg, feature_gen, update_freq=frequency,
                                              seed=seed,
                                              )
-
+    # policy_learner = RandomLearner(dataloaders['train'], 0, n_batches_per_step, model,
+    # policy_learner = VarianceLearnerDropout(dataloaders['train'], 0, n_batches_per_step, model,
+    # policy_learner = UncertainLearnerEntropy(dataloaders['train'], 0, n_batches_per_step, model,
+                                            # update_freq=frequency, seed=seed, shuffle=True, device=device)
+    
     model, optimizer, policy_learner, start_epoch, writer_name, n_images = checkpoint_load(
         model, optimizer, policy_learner, args.saved_model)
     n_epochs = n_epochs_all - start_epoch

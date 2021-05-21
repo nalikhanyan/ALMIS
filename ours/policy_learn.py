@@ -6,7 +6,8 @@ from datetime import datetime
 import pandas as pd
 import torch
 import tqdm
-from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.svm import SVC, SVR
 from sklearn.model_selection import cross_validate
 from sklearn.preprocessing import StandardScaler
 
@@ -50,20 +51,37 @@ def main():
 
     X = ss.fit_transform(X)
 
-    lin_mod = LinearRegression()
-    scores = cross_validate(lin_mod, X, y, cv=5,
-                            scoring=('r2', 'neg_mean_absolute_percentage_error'),
+    # lin_mod = LinearRegression()
+    # lin_mod = SVC(kernel = 'rbf', C=1, cache_size=8000)
+    y_bool = y > -0.001
+    # y_bool = y > 0
+    # lin_mod = LogisticRegression(class_weight='balanced', max_iter=300)
+    lin_mod = SVC(kernel = 'rbf', C=1, cache_size=8000, class_weight='balanced', probability=True)
+    scores = cross_validate(lin_mod, X, y_bool, cv=5,
+                            # scoring=('r2', 'neg_mean_absolute_percentage_error'),
+                            scoring=('accuracy', 'roc_auc', 'f1', 'recall', 'precision'),
                             return_train_score=True
                             )
-    print(X.shape, y.shape)
-    print(scores['test_neg_mean_absolute_percentage_error'])
+    # print(scores['test_neg_mean_absolute_percentage_error'])
+    print(scores.keys())
+    print(scores['test_roc_auc'], )
+    print(scores['test_f1'], scores['train_f1'])
+    print(scores['test_recall'], scores['train_recall'])
+    print(scores['test_precision'], scores['train_precision'])
 
-    clf = LinearRegression().fit(X, y)
-    clf.score(X, y)
+    # clf = LogisticRegression(class_weight='balanced', max_iter=300).fit(X, y_bool)
+    clf = SVC(kernel = 'rbf', C=1, cache_size=8000, class_weight='balanced', probability=True).fit(X, y_bool)
+    clf.score(X, y_bool)
+    # clf_prd = pd.Series(clf.predict(X))
+    # prd = clf.predict_proba(X)
+    print(pd.Series(clf.predict(X)).value_counts())
+    print(y_bool.value_counts())
+    print(X.shape)
 
     cur_date = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
     file_name = os.path.join(save_dir, f'{model_name}_{cur_date}.dill')
     scikit_model_save({'clf': clf, 'scaler': ss}, file_name)
+    print(file_name)
 
 
 if __name__ == '__main__':

@@ -18,7 +18,7 @@ import torch.optim as optim
 import torchvision.utils
 from dataloaders.ct_lungs import LungsDataset
 from metrics import calc_f1, dice_loss, print_metrics
-from policy import RandomLearner, VarianceLearnerDropout
+from policy import RandomLearner, VarianceLearnerDropout, UncertainLearnerEntropy
 # from resumable_sampler import ResumableRandomSampler
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Dataset
@@ -213,8 +213,9 @@ def main():
 
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    # policy_learner = RandomLearner(dataloaders['train'], warmup_n_epochs, n_batches_per_step, model,
-    policy_learner = VarianceLearnerDropout(dataloaders['train'], warmup_n_epochs, n_batches_per_step, model,
+    policy_learner = RandomLearner(dataloaders['train'], warmup_n_epochs, n_batches_per_step, model,
+    # policy_learner = VarianceLearnerDropout(dataloaders['train'], warmup_n_epochs, n_batches_per_step, model,
+    # policy_learner = UncertainLearnerEntropy(dataloaders['train'], warmup_n_epochs, n_batches_per_step, model,
                                    update_freq=frequency, seed=seed, shuffle=True, device=device)
 
     cur_date = datetime.now().strftime('%Y_%m_%d_%H_%M')
@@ -223,9 +224,9 @@ def main():
     writer_name = f'{run_folder}/{set_name}_{class_name}_{seed}_{cur_date}'
     writer = SummaryWriter(writer_name, flush_secs=1)
 
-    modeln, n_images = train_model(model, dataloaders, policy_learner,
-                                #    optimizer, None, num_epochs=n_epochs,
-                                   optimizer, None, num_epochs=warmup_n_epochs,
+    model, n_images = train_model(model, dataloaders, policy_learner,
+                                   optimizer, None, num_epochs=n_epochs,
+                                #    optimizer, None, num_epochs=warmup_n_epochs,
                                    device=device, writer=writer
                                   )
     writer.close()
